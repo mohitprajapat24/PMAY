@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>House Construction Progress</title>
+  <style>
+    body{
+      margin:0;
+      font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,.7)),
+                  url('https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1600&q=80')
+                  no-repeat center/cover;
+      color:#fff; min-height:100vh; display:flex; justify-content:center; align-items:center;
+    }
+    .container{
+      background:rgba(255,255,255,0.1); backdrop-filter:blur(8px);
+      padding:30px; border-radius:15px; max-width:650px; width:100%; text-align:center;
+      box-shadow:0 8px 20px rgba(0,0,0,0.6);
+    }
+    h1{ color:#ffeb3b; margin-bottom:20px; }
+    label{display:block; text-align:left; margin-top:12px; font-weight:600;}
+    select,input[type="file"],button{
+      margin:10px 0; padding:10px; border-radius:8px; border:none; width:100%; font-size:16px;
+    }
+    select,input[type="file"]{ background:#fff; color:#333; }
+    button{ background:#4caf50; color:#fff; font-weight:700; cursor:pointer; transition:.25s; }
+    button:hover{ background:#45a049; transform:scale(1.03); }
+    button:disabled{
+      opacity:.6; cursor:not-allowed; transform:none; background:#6c757d;
+    }
+
+    .progress-bar{ display:flex; justify-content:space-between; margin:20px 0; position:relative; }
+    .progress-bar::before{
+      content:""; position:absolute; top:50%; left:0; right:0; height:5px; background:#ccc; z-index:1;
+    }
+    .step{ position:relative; z-index:2; background:#555; color:#fff; padding:10px 15px; border-radius:50%; transition:.3s; font-size:12px;}
+    .step.active{ background:#4caf50; transform:scale(1.15); }
+    #message{ margin-top:15px; font-size:18px; font-weight:700; display:none; color:#00ff7f; }
+
+    .preview{ margin-top:8px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .preview img{ width:90px; height:90px; object-fit:cover; border-radius:10px; box-shadow:0 4px 10px #0006; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Track Construction Progress</h1>
+
+    <label for="houseId">Select House ID:</label>
+    <select id="houseId" onchange="switchHouse()">
+      <option value="H001">House ID: H001</option>
+      <option value="H002">House ID: H002</option>
+      <option value="H003">House ID: H003</option>
+    </select>
+
+    <div class="progress-bar" id="progressBar"></div>
+
+    <label for="upload">Upload Construction Photo:</label>
+    <input type="file" id="upload" accept="image/*" />
+    <div id="preview" class="preview"></div>
+
+    <button onclick="nextStage()">Next Stage</button>
+    <button id="releaseBtn" onclick="releaseFund()" disabled>Release Fund</button>
+
+    <p id="message"></p>
+  </div>
+
+  <script>
+    const stages = ["Foundation", "Plinth", "Roof", "Completed"];
+    const houseData = {
+      H001: { stage: 0, photo: null },
+      H002: { stage: 0, photo: null },
+      H003: { stage: 0, photo: null }
+    };
+
+    const stepsContainer = document.getElementById("progressBar");
+    const houseSelect = document.getElementById("houseId");
+    const uploadInput = document.getElementById("upload");
+    const releaseBtn = document.getElementById("releaseBtn");
+    const preview = document.getElementById("preview");
+    const message = document.getElementById("message");
+
+    function renderSteps(houseId) {
+      stepsContainer.innerHTML = "";
+      stages.forEach((stage, idx) => {
+        const div = document.createElement("div");
+        div.className = "step" + (idx === houseData[houseId].stage ? " active" : "");
+        div.textContent = stage;
+        stepsContainer.appendChild(div);
+      });
+    }
+
+    function switchHouse() {
+      const houseId = houseSelect.value;
+      renderSteps(houseId);
+
+      // Restore preview and release button status
+      preview.innerHTML = "";
+      if (houseData[houseId].photo) {
+        const img = document.createElement("img");
+        img.src = houseData[houseId].photo;
+        preview.appendChild(img);
+        releaseBtn.disabled = false;
+      } else {
+        releaseBtn.disabled = true;
+      }
+      message.style.display = "none";
+    }
+
+    function nextStage() {
+      const houseId = houseSelect.value;
+      if (houseData[houseId].stage < stages.length - 1) {
+        houseData[houseId].stage++;
+        renderSteps(houseId);
+      } else {
+        alert("House construction is already completed!");
+      }
+    }
+
+    uploadInput.addEventListener("change", () => {
+      const houseId = houseSelect.value;
+      preview.innerHTML = "";
+
+      const file = uploadInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          houseData[houseId].photo = e.target.result;
+          const img = document.createElement("img");
+          img.src = e.target.result;
+          preview.appendChild(img);
+          releaseBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        houseData[houseId].photo = null;
+        releaseBtn.disabled = true;
+      }
+    });
+
+    function releaseFund() {
+      const houseId = houseSelect.value;
+      if (!houseData[houseId].photo) {
+        alert("Please upload a construction photo before releasing funds!");
+        releaseBtn.disabled = true;
+        return;
+      }
+
+      message.style.display = "block";
+      message.textContent = `✅ Fund released successfully for ${houseId} — Stage: ${stages[houseData[houseId].stage]}`;
+
+      // Lock release until a new photo is uploaded
+      houseData[houseId].photo = null;
+      releaseBtn.disabled = true;
+      preview.innerHTML = "";
+    }
+
+    // Initial render
+    switchHouse();
+  </script>
+</body>
+</html>
